@@ -9,7 +9,7 @@ import time
 import numpy as np
 import torch
 from PIL import Image
-from transformers import AutoModelForVision2Seq, AutoProcessor
+from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig
 
 # === Verification Arguments
 MODEL_PATH = "openvla/openvla-7b"
@@ -37,14 +37,14 @@ def verify_openvla() -> None:
     processor = AutoProcessor.from_pretrained(MODEL_PATH, trust_remote_code=True)
 
     # === BFLOAT16 + FLASH-ATTN MODE ===
-    print("[*] Loading in BF16 with Flash-Attention Enabled")
-    vla = AutoModelForVision2Seq.from_pretrained(
-        MODEL_PATH,
-        attn_implementation="flash_attention_2",
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-        trust_remote_code=True,
-    ).to(device)
+    # print("[*] Loading in BF16 with Flash-Attention Enabled")
+    # vla = AutoModelForVision2Seq.from_pretrained(
+    #     MODEL_PATH,
+    #     attn_implementation="flash_attention_2",
+    #     torch_dtype=torch.bfloat16,
+    #     low_cpu_mem_usage=True,
+    #     trust_remote_code=True,
+    # ).to(device)
 
     # === 8-BIT QUANTIZATION MODE (`pip install bitsandbytes`) :: [~9GB of VRAM Passive || 10GB of VRAM Active] ===
     # print("[*] Loading in 8-Bit Quantization Mode")
@@ -58,15 +58,15 @@ def verify_openvla() -> None:
     # )
 
     # === 4-BIT QUANTIZATION MODE (`pip install bitsandbytes`) :: [~6GB of VRAM Passive || 7GB of VRAM Active] ===
-    # print("[*] Loading in 4-Bit Quantization Mode")
-    # vla = AutoModelForVision2Seq.from_pretrained(
-    #     MODEL_PATH,
-    #     attn_implementation="flash_attention_2",
-    #     torch_dtype=torch.float16,
-    #     quantization_config=BitsAndBytesConfig(load_in_4bit=True),
-    #     low_cpu_mem_usage=True,
-    #     trust_remote_code=True,
-    # )
+    print("[*] Loading in 4-Bit Quantization Mode")
+    vla = AutoModelForVision2Seq.from_pretrained(
+        MODEL_PATH,
+        attn_implementation="flash_attention_2",
+        torch_dtype=torch.float16,
+        quantization_config=BitsAndBytesConfig(load_in_4bit=True),
+        low_cpu_mem_usage=True,
+        trust_remote_code=True,
+    )
 
     print("[*] Iterating with Randomly Generated Images")
     for _ in range(100):
@@ -74,10 +74,10 @@ def verify_openvla() -> None:
         image = Image.fromarray(np.asarray(np.random.rand(256, 256, 3) * 255, dtype=np.uint8))
 
         # === BFLOAT16 MODE ===
-        inputs = processor(prompt, image).to(device, dtype=torch.bfloat16)
+        # inputs = processor(prompt, image).to(device, dtype=torch.bfloat16)
 
         # === 8-BIT/4-BIT QUANTIZATION MODE ===
-        # inputs = processor(prompt, image).to(device, dtype=torch.float16)
+        inputs = processor(prompt, image).to(device, dtype=torch.float16)
 
         # Run OpenVLA Inference
         start_time = time.time()
